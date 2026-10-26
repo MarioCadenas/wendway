@@ -20,8 +20,9 @@ export function init() {
   console.log(`   Wrote a starter manifest: ${manifest}\n`);
   console.log("Next steps:");
   console.log("  1. Edit manifest.json — replace the example entry with your real configs:");
-  console.log("       • dir mode   — symlink a whole config directory (e.g. ~/.config/nvim)");
-  console.log("       • files mode — symlink only listed files (for dirs that also hold state)");
+  console.log("       • dir mode      — symlink a whole config directory (e.g. ~/.config/nvim)");
+  console.log("       • files mode    — symlink only listed files (for dirs that also hold state)");
+  console.log("       • children mode — store selected child directories once, symlink each into several live directories");
   console.log("  2. wendway link   — move those configs into the repo and symlink them back");
   console.log("  3. wendway sync   — commit + push (add an 'origin' remote first for cross-machine sync)");
 }
