@@ -85,13 +85,47 @@ managed Macs report their serial number as the hostname.
 - Env: set `WENDWAY_SKIP_LAUNCHCTL=1` to write/remove the autosync plist without calling
   `launchctl` — for sandboxed test runs (drive it against a throwaway `HOME`) and hosts
   without launchd (CI, containers).
-- `manifest.json` describes each shared config. Two modes:
+- `manifest.json` describes each shared config. Three modes:
   - `dir` — the whole directory is symlinked (use for dirs that are all config).
   - `files` — only listed files/subdirs are symlinked (use when the dir also holds
     runtime state like logs, sessions, or local databases).
+  - `children` — one stored tree of selected child directories, each symlinked into
+    every path in `targets`. Use this when the same set of folders (for example a
+    skill directory) lives in several places and has to stay one copy. The program
+    does not know those paths; they belong in the manifest.
 - `link` moves each live config into the repo (backing it up as `<name>.bak` first),
   then symlinks the original path to it. Re-running is safe; on another machine it just
   creates the symlink to the already-cloned files.
+
+### Sharing one tree across several directories
+
+A `children` entry stores each selected child at `<repo>/<name>/<child>` and symlinks
+that path from every directory in `targets`:
+
+```json
+{
+  "name": "skills",
+  "mode": "children",
+  "targets": ["~/.config/agent-a/skills", "~/.config/agent-b/skills"],
+  "children": "every",
+  "skip": ["synced"]
+}
+```
+
+- `children` chooses what to share. `"every"` (or omitting the field) shares every child.
+  A glob such as `"team-*"` shares one family of names (`*` is any run of characters, `?` is one).
+- `skip` is a list of child names to leave untouched — a directory that happens to
+  live beside the skills but is not one of them.
+- A symlink that points outside every directory in `targets` stays where it is and is
+  not copied into the repo. A symlink whose target is the same child in another
+  target is that one skill, not a second copy.
+- When the same child is a real directory in more than one target, the stored tree is
+  the union of the files (a file that exists in only one copy is kept). If the same
+  relative path has different contents, `link` does not choose a winner: it leaves
+  those copies in place and reports the paths.
+- Running `link` again leaves a symlink that already points at the stored tree alone.
+  A real directory is backed up to `<path>.bak` and replaced with a symlink. Those
+  `.bak` directories are not themselves shared.
 
 ## How sync works
 
@@ -99,6 +133,12 @@ managed Macs report their serial number as the hostname.
 never force-pushes and never auto-resolves conflicts — on a conflict it aborts the rebase,
 restores the tree, and asks you to run `sync` interactively. The launchd agent runs `sync`
 on an interval (and once on wake), so edits made on one machine reach the others.
+
+Before that commit, `sync` adopts new matching children from any target of a `children`
+entry and refreshes the symlinks in all of them. A skill added in one directory is stored
+and linked into the others on that machine, then committed and pushed. After the pull,
+`sync` refreshes those symlinks again, so a skill that just arrived is linked here before
+the push. If two live copies disagree, sync stops and does not push.
 
 ## Releasing
 

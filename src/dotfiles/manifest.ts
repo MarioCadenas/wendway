@@ -5,13 +5,20 @@ import { dotfilesRepo, expandHome } from "../config.js";
 // A shared dotfile entry, stored as data in the repo's manifest.json.
 // - "dir": symlink the whole `target` directory into `<repo>/<name>`; `ignore` becomes its .gitignore.
 // - "files": symlink only `files` individually, leaving `target` a real directory (for dirs that also hold state).
-// `target` may start with `~`.
+// - "children": store one tree of selected child directories at `<repo>/<name>/<child>`, and symlink
+//   each child into every directory in `targets`. `children` is "every" or a glob (`team-*`).
+//   `skip` names are left untouched. Paths may start with `~`. No tool paths are built in.
 export interface DotfileEntry {
   name: string;
-  target: string;
-  mode: "dir" | "files";
+  target?: string;
+  mode: "dir" | "files" | "children";
   files?: string[];
   ignore?: string[];
+  targets?: string[];
+  /** "every" shares every child; any other value is a glob (`*` any run, `?` one character). */
+  children?: string;
+  /** Child names that are not skills and must not be stored or linked. */
+  skip?: string[];
 }
 
 // Personal, behaviour-driving values that used to be hardcoded in the engine.
@@ -73,7 +80,11 @@ function readManifest(): Manifest {
 
 // Entries with `~` expanded in targets, for filesystem use.
 export function loadManifest(): DotfileEntry[] {
-  return readManifest().entries.map((e) => ({ ...e, target: expandHome(e.target) }));
+  return readManifest().entries.map((e) => ({
+    ...e,
+    ...(e.target !== undefined ? { target: expandHome(e.target) } : {}),
+    ...(e.targets ? { targets: e.targets.map(expandHome) } : {}),
+  }));
 }
 
 // Entries as stored (targets keep `~`); use when rewriting the manifest so absolute paths aren't persisted.

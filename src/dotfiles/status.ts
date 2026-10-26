@@ -11,12 +11,16 @@ export function status() {
     "adopt-from-repo": "in repo, not linked here",
     migrate: "live only (not yet in repo)",
     "overwrite-with-repo": "exists both live and in repo",
+    union: "live copy to fold into the stored tree",
+    retarget: "symlink to retarget at the stored tree",
+    outside: "external symlink (left in place)",
     skip: "missing",
     conflict: "CONFLICT",
   };
   for (const it of items) {
     const name = entryLabel(it.entry.name, it.rel);
-    console.log(`  ${name.padEnd(28)} ${state[it.action.kind]}`);
+    const where = it.entry.mode === "children" ? `  ${it.action.from}` : "";
+    console.log(`  ${name.padEnd(28)} ${state[it.action.kind]}${where}`);
   }
 
   console.log("\nRepo sync:\n");
